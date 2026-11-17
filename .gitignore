@@ -1,0 +1,25 @@
+
+# Synopsys VCS executables
+simv
+simv_*
+simv.daidir/
+simv_*.daidir/
+csrc/
+
+# Verdi and waveform files
+*.fsdb
+*.vpd
+*.vcd
+*.vdb/
+verdiLog/
+novas.*
+ucli.key
+
+# Generated simulation files
+*.log
+*.key
+*.jou
+DVEfiles/
+urgReport/
+coverage/
+
