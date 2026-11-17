@@ -32,6 +32,12 @@ module tb_dma_controller;
     int reads_ch0, reads_ch1;
     int writes_ch0, writes_ch1;
     int completions_ch0, completions_ch1;
+    
+    
+    // Count how many times each channel is issued
+    int accepts_ch0;
+    int accepts_ch1;
+
 
     always #5 clk = ~clk;
 
@@ -222,6 +228,24 @@ module tb_dma_controller;
             end
         end
     end
+    
+    // NEW: Count accepted channel commands
+    always @(posedge clk) begin
+        if (rst_n && dut.arb_accept) begin
+            if (dut.start_channel == 1'b0) begin
+                accepts_ch0++;
+                if (accepts_ch0 > 1)
+                    $fatal(1,
+                        "CH0 DUPLICATE START DETECTED");
+            end
+            else begin
+                accepts_ch1++;
+                if (accepts_ch1 > 1)
+                    $fatal(1,
+                        "CH1 DUPLICATE START DETECTED");
+            end
+        end
+    end
 
     // FSDB waveforms
     initial begin
@@ -245,6 +269,9 @@ module tb_dma_controller;
         writes_ch1 = 0;
         completions_ch0 = 0;
         completions_ch1 = 0;
+
+        accepts_ch0 = 0;
+        accepts_ch1 = 0;
 
         repeat (2) @(negedge clk);
         rst_n = 1;
@@ -287,6 +314,15 @@ module tb_dma_controller;
         if (completions_ch0 != 1 ||
             completions_ch1 != 1)
             $fatal(1, "Duplicate completion detected");
+
+        // Verify both channels were accepted exactly once
+        if (accepts_ch0 != 1 ||
+            accepts_ch1 != 1)
+            $fatal(1,
+                "Incorrect acceptance count: CH0=%0d CH1=%0d",
+                accepts_ch0, accepts_ch1);
+
+        $display("PASS: Each DMA channel accepted exactly once");
 
         $display("--------------------------------");
         $display("INTEGRATED DMA CONTROLLER PASSED");

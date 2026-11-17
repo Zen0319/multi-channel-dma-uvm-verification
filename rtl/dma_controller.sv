@@ -51,6 +51,19 @@ module dma_controller (
     logic grant0;
     logic grant1;
     logic arb_accept;
+    
+    
+    // Prevent channels from being issued twice
+    logic ch0_issued;
+    logic ch1_issued;
+
+    // Requests eligible for arbitration
+    logic ch0_request;
+    logic ch1_request;
+
+    assign ch0_request = ch0_pending && !ch0_issued;
+    assign ch1_request = ch1_pending && !ch1_issued;
+
 
     // DMA engine command interface
     logic        start_valid;
@@ -102,15 +115,15 @@ module dma_controller (
         .clk(clk),
         .rst_n(rst_n),
 
-        .req0(ch0_pending),
-        .req1(ch1_pending),
+        
+        .req0(ch0_request),
+        .req1(ch1_request),
 
         .accept(arb_accept),
 
         .grant0(grant0),
         .grant1(grant1)
     );
-
     // ------------------------------------
     // 3. Select the Granted Channel
     // ------------------------------------
@@ -140,6 +153,31 @@ module dma_controller (
     // A grant is accepted only if the
     // engine is ready for a new command.
     assign arb_accept = start_valid && start_ready;
+    
+    
+    // Track channels accepted by the DMA engine
+    always_ff @(posedge clk) begin
+        if (!rst_n) begin
+            ch0_issued <= 1'b0;
+            ch1_issued <= 1'b0;
+        end
+        else begin
+            // Mark the selected channel as issued
+            if (arb_accept && grant0)
+                ch0_issued <= 1'b1;
+
+            if (arb_accept && grant1)
+                ch1_issued <= 1'b1;
+
+            // Release issued state at completion
+            if (done_valid && !done_channel)
+                ch0_issued <= 1'b0;
+
+            if (done_valid && done_channel)
+                ch1_issued <= 1'b0;
+        end
+    end
+
 
     // ------------------------------------
     // 4. DMA Transfer Engine
